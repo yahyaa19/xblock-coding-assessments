@@ -1,6 +1,9 @@
 /* Javascript for CodingAIEvalXBlock. */
 function CodingAIEvalXBlock(runtime, element, data) {
   const runCodeHandlerURL = runtime.handlerUrl(element, "submit_code_handler");
+  const resetHandlerURL = runtime.handlerUrl(element, "reset_handler");
+
+
   const submissionResultURL = runtime.handlerUrl(
     element,
     "get_submission_result_handler",
@@ -118,7 +121,24 @@ function CodingAIEvalXBlock(runtime, element, data) {
     }
 
     resetButton.click(() => {
-      iframe.contentWindow.editor.setValue("");
+      $.ajax({
+        url: resetHandlerURL,
+        method: "POST",
+        data: JSON.stringify({}),
+        success: function (data) {
+          iframe.contentWindow.editor.setValue("");
+          AIFeeback.html("");
+          if (data.language !== HTML_CSS) {
+            stdout.text("");
+            stderr.text("");
+          }
+        },
+        error: function(xhr, status, error) {
+          console.error('Error:', error);
+          alert("A problem occured during reset.");
+        }
+      });
+
     });
 
     submitButton.click(() => {

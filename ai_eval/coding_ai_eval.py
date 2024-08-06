@@ -63,7 +63,7 @@ class CodingAIEvalXBlock(AIEvalXBlock):
         Scope=Scope.settings,
     )
     messages = Dict(
-        help=_("Dictionary with chat messages"),
+        help=_("Dictionary with messages"),
         scope=Scope.user_state,
         default={USER_RESPONSE: "", AI_EVALUATION: "", CODE_EXEC_RESULT: {}},
     )
@@ -219,6 +219,14 @@ class CodingAIEvalXBlock(AIEvalXBlock):
             self.judge0_api_key, data["user_code"], self.language
         )
         return {"submission_id": submission_id}
+
+    @XBlock.json_handler
+    def reset_handler(self, data, suffix=""):  # pylint: disable=unused-argument
+        """
+        Reset the Xblock.
+        """
+        self.messages = {USER_RESPONSE: "", AI_EVALUATION: "", CODE_EXEC_RESULT: {}}
+        return {"message": "reset successful."}
 
     @XBlock.json_handler
     def get_submission_result_handler(
