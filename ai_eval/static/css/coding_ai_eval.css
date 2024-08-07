@@ -7,15 +7,15 @@
 .used-prog-language span {
   background-color: #00262b;
   color: white;
-	display: inline-block;
-	padding: .25em .4em;
-	font-size: 75%;
-	font-weight: 700;
-	line-height: 1;
-	text-align: center;
-	white-space: nowrap;
-	vertical-align: baseline;
-	border-radius: .25rem;
+  display: inline-block;
+  padding: .25em .4em;
+  font-size: 75%;
+  font-weight: 700;
+  line-height: 1;
+  text-align: center;
+  white-space: nowrap;
+  vertical-align: baseline;
+  border-radius: .25rem;
 }
 
 .eval-ai-container {
@@ -58,7 +58,6 @@
 }
 
 .eval-ai-container .eval-ai-buttons .eval-ai-button {
-  cursor: pointer;
   margin: 10px;
   text-align: center;
   height: fit-content;
@@ -72,18 +71,6 @@
   opacity: 0.8;
   cursor: not-allowed !important;
 }
-
-.eval-ai-container .eval-ai-buttons #submit-button {
-  background-color: #00262b;
-  color: white;
-  border: none;
-}
-
-.eval-ai-container .eval-ai-buttons #reset-button:hover {
-  background-color: #edeae9;
-}
-
-
 
 .eval-ai-container .stderr {
   margin-top: 10px;
