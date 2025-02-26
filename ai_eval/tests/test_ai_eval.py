@@ -3,6 +3,8 @@ Testing module.
 """
 # pylint: disable=redefined-outer-name,protected-access
 
+from unittest.mock import Mock, patch
+
 import pytest
 from xblock.exceptions import JsonHandlerError
 from xblock.field_data import DictFieldData
@@ -118,3 +120,35 @@ def test_character_image(shortanswer_block_data):
     block = ShortAnswerAIEvalXBlock(ToyRuntime(), DictFieldData(data), None)
     frag = block.student_view()
     assert '<img src="/static/image.jpg" />' in frag.content
+
+
+@pytest.mark.parametrize(
+    "xblock_key, site_config_key, settings_dict, expected_result",
+    [
+        # XBlock field is prioritized
+        ("xblock-key", "site-config-key", {"GPT4O_API_KEY": "settings-key"}, "xblock-key"),
+        # Fall back to site configuration
+        ("", "site-config-key", {"GPT4O_API_KEY": "settings-key"}, "site-config-key"),
+        # Fall back to settings
+        ("", None, {"GPT4O_API_KEY": "settings-key"}, "settings-key"),
+        # No API key found
+        ("", None, {}, None),
+    ],
+)
+def test_get_model_api_key_fallback_chain(ai_eval_block, xblock_key, site_config_key, settings_dict, expected_result):
+    """Test API key fallback chain with different scenarios."""
+    ai_eval_block.model_api_key = xblock_key
+    ai_eval_block._get_settings = Mock(return_value=settings_dict)
+
+    with patch("ai_eval.base.get_site_configuration_api_key", return_value=site_config_key) as mock_site_config:
+        api_key = ai_eval_block.get_model_api_key()
+
+        if not xblock_key:
+            mock_site_config.assert_called_once_with(ai_eval_block.block_settings_key, "GPT4O_API_KEY")
+
+    if not site_config_key:
+        ai_eval_block._get_settings.assert_called_once()
+    else:
+        ai_eval_block._get_settings.assert_not_called()
+
+    assert api_key == expected_result

@@ -1,4 +1,5 @@
 """Base Xblock with AI evaluation."""
+from typing import Self
 
 import pkg_resources
 
@@ -9,11 +10,11 @@ from xblock.utils.resources import ResourceLoader
 from xblock.utils.studio_editable import StudioEditableXBlockMixin
 from xblock.validation import ValidationMessage
 
-
+from .compat import get_site_configuration_api_key
 from .llm import SupportedModels
 
 
-
+@XBlock.wants("settings")
 class AIEvalXBlock(StudioEditableXBlockMixin, XBlock):
     """
     Base class for Xblocks with AI evaluation
@@ -27,7 +28,7 @@ class AIEvalXBlock(StudioEditableXBlockMixin, XBlock):
     icon_class = "problem"
     model_api_key = String(
         display_name=_("Chosen model API Key"),
-        help=_("Enter your the API Key of your chosen model."),
+        help=_("Enter the API Key of your chosen model. Not required if your administrator has set it globally."),
         default="",
         scope=Scope.settings,
     )
@@ -86,10 +87,51 @@ class AIEvalXBlock(StudioEditableXBlockMixin, XBlock):
         "model_api_url",
     )
 
+    block_settings_key = "ai_eval"
+
+    def _get_settings(self) -> dict:  # pragma: nocover
+        """Get the XBlock settings bucket via the SettingsService."""
+        settings_service = self.runtime.service(self, "settings")
+        if settings_service:
+            return settings_service.get_settings_bucket(self)
+
+        return {}
+
     def resource_string(self, path):
         """Handy helper for getting resources from our kit."""
         data = pkg_resources.resource_string(__name__, path)
         return data.decode("utf8")
+
+    def get_model_api_key(self, obj: Self = None) -> str | None:
+        """
+        Get the API key for the model provider with a fallback chain.
+
+        Checks for the API key in the following order:
+        1. XBlock field (model_api_key)
+        2. Site configuration
+        3. XBlock settings (defined in Django settings)
+
+        Args:
+            obj: Optional data object for validation context.
+                If provided, use its attributes instead of instance attributes.
+
+        Returns:
+            The API key if found in any of the sources, None otherwise.
+        """
+
+        obj = obj or self
+        api_key_name = f"{SupportedModels(obj.model).name}_API_KEY"
+
+        # XBlock field
+        if api_key := obj.model_api_key:
+            return str(api_key)
+
+        # Site configuration
+        if api_key := get_site_configuration_api_key(self.block_settings_key, api_key_name):
+            return api_key
+
+        # XBlock settings
+        return self._get_settings().get(api_key_name)
 
     def validate_field_data(self, validation, data):
         """
@@ -106,10 +148,10 @@ class AIEvalXBlock(StudioEditableXBlockMixin, XBlock):
                 )
             )
 
-        if not data.model_api_key:
+        if not self.get_model_api_key(data):
             validation.add(
                 ValidationMessage(
-                    ValidationMessage.ERROR, _("Model API key is mandatory")
+                    ValidationMessage.ERROR, _("Model API key is mandatory, if not set globally by your administrator.")
                 )
             )
 
