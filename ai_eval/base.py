@@ -5,22 +5,13 @@ import pkg_resources
 from django.utils.translation import gettext_noop as _
 from xblock.core import XBlock
 from xblock.fields import String, Scope, Dict
+from xblock.utils.resources import ResourceLoader
+from xblock.utils.studio_editable import StudioEditableXBlockMixin
 from xblock.validation import ValidationMessage
 
 
 from .llm import SupportedModels
 
-try:
-    from xblock.utils.studio_editable import StudioEditableXBlockMixin
-except ModuleNotFoundError:  # For compatibility with Palm and earlier
-    from xblockutils.studio_editable import StudioEditableXBlockMixin
-
-try:
-    from xblock.utils.resources import ResourceLoader
-except (
-    ModuleNotFoundError
-):  # For backward compatibility with releases older than Quince.
-    from xblockutils.resources import ResourceLoader
 
 
 class AIEvalXBlock(StudioEditableXBlockMixin, XBlock):

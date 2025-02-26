@@ -40,4 +40,5 @@ setup(
         ]
     },
     package_data=package_data("ai_eval", ["static", "public", "templates"]),
+    python_requires=">=3.11",
 )
