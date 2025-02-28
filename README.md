@@ -32,29 +32,35 @@ This repository hosts two Open edX XBlocks:
 
 5. Configure the added Xblock and make sure to add correct API keys. You can format your question and prompts using [Markdown](https://marked.js.org/demo/).
 
-### API Key Configuration
+### API Configuration
 
-The XBlocks support multiple ways to configure API keys for language models.  
-The system will check for API keys in the following order:
-1. **XBlock-level configuration**: API keys can be set directly in each XBlock instance through the Studio UI.
-2. **Site configuration**: API keys can be set globally for all XBlocks using Open edX's Site Configuration.
-   To configure API keys in Site Configuration, navigate to `Django admin > Site Configurations` and add the following keys:
+The XBlocks support multiple ways to configure API keys and URLs for language models.  
+The system will check for these configurations in the following order:
+1. **XBlock-level configuration**: API keys and URLs can be set directly in each XBlock instance through the Studio UI.
+2. **Site configuration**: Values can be set globally for all XBlocks using Open edX's Site Configuration.
+   To configure values in Site Configuration, navigate to `Django admin > Site Configurations` and add the following keys:
    ```json
     {
         "ai_eval": {
-             "GPT4O_API_KEY": "your-openai-api-key"
+             "GPT4O_API_KEY": "your-openai-api-key",
+             "LLAMA_API_URL": "https://your-llama-endpoint"
         }
     }
     ```
-3. **Django settings**: API keys can be defined in the Django settings. 
-   To configure API keys in Django settings (e.g., in Tutor), add the following to your configuration:
+3. **Django settings**: Values can be defined in the Django settings. 
+   To configure in Django settings (e.g., in Tutor), add the following to your configuration:
    ```python
    XBLOCK_SETTINGS = {
        "ai_eval": {
            "GPT4O_API_KEY": "your-openai-api-key",
+           "LLAMA_API_URL": "https://your-llama-endpoint"
         }
     }
     ```
+
+#### Note About API URLs
+
+API URLs are only required and used with the LLAMA model (`ollama/llama2`). Other models use their standard endpoints and only require API keys.
 
 #### Security Considerations
 

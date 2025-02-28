@@ -135,7 +135,7 @@ class ShortAnswerAIEvalXBlock(AIEvalXBlock):
 
         try:
             response = get_llm_response(
-                self.model, self.get_model_api_key(), messages, self.model_api_url
+                self.model, self.get_model_api_key(), messages, self.get_model_api_url()
             )
 
         except Exception as e:

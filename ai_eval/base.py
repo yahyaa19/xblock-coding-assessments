@@ -10,7 +10,7 @@ from xblock.utils.resources import ResourceLoader
 from xblock.utils.studio_editable import StudioEditableXBlockMixin
 from xblock.validation import ValidationMessage
 
-from .compat import get_site_configuration_api_key
+from .compat import get_site_configuration_value
 from .llm import SupportedModels
 
 
@@ -102,36 +102,47 @@ class AIEvalXBlock(StudioEditableXBlockMixin, XBlock):
         data = pkg_resources.resource_string(__name__, path)
         return data.decode("utf8")
 
-    def get_model_api_key(self, obj: Self = None) -> str | None:
+    def _get_model_config_value(self, config_parameter: str, obj: Self = None) -> str | None:
         """
-        Get the API key for the model provider with a fallback chain.
+        Get configuration value for the model provider with a fallback chain.
 
-        Checks for the API key in the following order:
-        1. XBlock field (model_api_key)
+        Checks for the value in the following order:
+        1. XBlock field (model_api_key or model_api_url)
         2. Site configuration
         3. XBlock settings (defined in Django settings)
 
         Args:
+            config_parameter: Parameter to retrieve (e.g., "API_KEY" or "API_URL").
             obj: Optional data object for validation context.
-                If provided, use its attributes instead of instance attributes.
 
         Returns:
-            The API key if found in any of the sources, None otherwise.
+            The configuration value if found in any of the sources, None otherwise.
         """
-
         obj = obj or self
-        api_key_name = f"{SupportedModels(obj.model).name}_API_KEY"
+        field_name = f"model_{config_parameter}"
+        config_key = f"{SupportedModels(obj.model).name}_{config_parameter.upper()}"
 
         # XBlock field
-        if api_key := obj.model_api_key:
-            return str(api_key)
+        if value := getattr(obj, field_name, None):
+            return str(value)
 
         # Site configuration
-        if api_key := get_site_configuration_api_key(self.block_settings_key, api_key_name):
-            return api_key
+        if value := get_site_configuration_value(self.block_settings_key, config_key):
+            return value
 
         # XBlock settings
-        return self._get_settings().get(api_key_name)
+        return self._get_settings().get(config_key)
+
+    def get_model_api_key(self, obj: Self = None) -> str | None:
+        """Get the API key for the model provider."""
+
+        return self._get_model_config_value("api_key", obj)
+
+    def get_model_api_url(self, obj: Self = None) -> str | None:
+        """
+        Get the API URL for the model provider.
+        """
+        return self._get_model_config_value("api_url", obj)
 
     def validate_field_data(self, validation, data):
         """
@@ -155,15 +166,18 @@ class AIEvalXBlock(StudioEditableXBlockMixin, XBlock):
                 )
             )
 
-        if data.model == SupportedModels.LLAMA and not data.model_api_url:
+        if data.model == SupportedModels.LLAMA.value and not self.get_model_api_url(data):
             validation.add(
                 ValidationMessage(
                     ValidationMessage.ERROR,
-                    _("API URL field is mandatory when using ollama/llama2."),
+                    _(
+                        "API URL field is mandatory when using ollama/llama2, "
+                        "if not set globally by your administrator."
+                    ),
                 )
             )
 
-        if data.model != SupportedModels.LLAMA and data.model_api_url:
+        if data.model != SupportedModels.LLAMA.value and data.model_api_url:
             validation.add(
                 ValidationMessage(
                     ValidationMessage.ERROR,

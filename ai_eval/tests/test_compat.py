@@ -5,7 +5,7 @@ from unittest.mock import patch
 import pytest
 from django.test import override_settings
 
-from ai_eval.compat import get_site_configuration_api_key
+from ai_eval.compat import get_site_configuration_value
 
 
 @pytest.mark.parametrize(
@@ -17,14 +17,14 @@ from ai_eval.compat import get_site_configuration_api_key
 )
 @patch("ai_eval.compat._get_current_site_configuration_value")
 @override_settings(SERVICE_VARIANT="lms")
-def test_get_site_configuration_api_key_in_lms(
+def test_get_site_configuration_value_in_lms(
     mock_get_current_site_configuration_value, site_configuration_value, expected_key
 ):
     """Test API key retrieval in different contexts."""
     block_settings_key = "block_settings"
     mock_get_current_site_configuration_value.return_value = site_configuration_value
 
-    result = get_site_configuration_api_key(block_settings_key, "api_key")
+    result = get_site_configuration_value(block_settings_key, "api_key")
 
     mock_get_current_site_configuration_value.assert_called_once_with(block_settings_key, {})
     assert result == expected_key
@@ -42,7 +42,7 @@ def test_get_site_configuration_api_key_in_lms(
 @patch("ai_eval.compat._get_site_configuration_value")
 @patch("ai_eval.compat._get_current_site_configuration_value")
 @override_settings(LMS_BASE="settings.example.com")
-def test_get_site_configuration_api_key_in_cms(
+def test_get_site_configuration_value_in_cms(
     mock_get_current_site_configuration_value,
     mock_get_site_configuration_value,
     lms_site_configuration_value,
@@ -55,7 +55,7 @@ def test_get_site_configuration_api_key_in_cms(
     mock_get_current_site_configuration_value.return_value = cms_site_configuration_value
     mock_get_site_configuration_value.return_value = lms_site_configuration_value
 
-    result = get_site_configuration_api_key(block_settings_key, "api_key")
+    result = get_site_configuration_value(block_settings_key, "api_key")
 
     mock_get_current_site_configuration_value.assert_called_once_with("LMS_BASE", settings_lms_base)
     mock_get_site_configuration_value.assert_called_once_with(cms_site_configuration_value, block_settings_key, {})

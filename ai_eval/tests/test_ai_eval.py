@@ -135,20 +135,40 @@ def test_character_image(shortanswer_block_data):
         ("", None, {}, None),
     ],
 )
-def test_get_model_api_key_fallback_chain(ai_eval_block, xblock_key, site_config_key, settings_dict, expected_result):
-    """Test API key fallback chain with different scenarios."""
+def test_get_model_config_value_fallback_chain(
+    ai_eval_block, xblock_key, site_config_key, settings_dict, expected_result
+):
+    """
+    Test API key fallback chain with different scenarios.
+
+    This tests the core fallback logic which is also used for API URLs.
+    """
     ai_eval_block.model_api_key = xblock_key
     ai_eval_block._get_settings = Mock(return_value=settings_dict)
 
-    with patch("ai_eval.base.get_site_configuration_api_key", return_value=site_config_key) as mock_site_config:
+    with patch("ai_eval.base.get_site_configuration_value", return_value=site_config_key) as mock_site_config:
         api_key = ai_eval_block.get_model_api_key()
 
         if not xblock_key:
             mock_site_config.assert_called_once_with(ai_eval_block.block_settings_key, "GPT4O_API_KEY")
 
-    if not site_config_key:
+    if not site_config_key and not xblock_key:
         ai_eval_block._get_settings.assert_called_once()
     else:
         ai_eval_block._get_settings.assert_not_called()
 
     assert api_key == expected_result
+
+
+@patch.object(AIEvalXBlock, '_get_model_config_value', return_value="test-key")
+def test_get_model_api_key_delegates(mock_get_config, ai_eval_block):
+    """Test that get_model_api_key delegates to _get_model_config_value."""
+    assert ai_eval_block.get_model_api_key() == "test-key"
+    mock_get_config.assert_called_once_with("api_key", None)
+
+
+@patch.object(AIEvalXBlock, '_get_model_config_value', return_value="test-url")
+def test_get_model_api_url_delegates(mock_get_config, ai_eval_block):
+    """Test that get_model_api_url delegates to _get_model_config_value."""
+    assert ai_eval_block.get_model_api_url() == "test-url"
+    mock_get_config.assert_called_once_with("api_url", None)

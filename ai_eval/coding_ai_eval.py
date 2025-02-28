@@ -189,7 +189,7 @@ class CodingAIEvalXBlock(AIEvalXBlock):
                 self.model,
                 self.get_model_api_key(),
                 messages,
-                self.model_api_url,
+                self.get_model_api_url(),
             )
 
         except Exception as e:
