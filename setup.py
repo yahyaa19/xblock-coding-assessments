@@ -23,7 +23,7 @@ def package_data(pkg, roots):
 
 setup(
     name="xblock-ai-eval",
-    version="0.1",
+    version="0.2.0",
     description="XBlocks to write short text and code entries with AI-driven evaluation",
     license="Apache 2.0",
     packages=[
@@ -40,4 +40,5 @@ setup(
         ]
     },
     package_data=package_data("ai_eval", ["static", "public", "templates"]),
+    python_requires=">=3.11",
 )

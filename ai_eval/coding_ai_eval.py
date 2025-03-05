@@ -187,9 +187,9 @@ class CodingAIEvalXBlock(AIEvalXBlock):
         try:
             response = get_llm_response(
                 self.model,
-                self.model_api_key,
+                self.get_model_api_key(),
                 messages,
-                self.model_api_url,
+                self.get_model_api_url(),
             )
 
         except Exception as e:
