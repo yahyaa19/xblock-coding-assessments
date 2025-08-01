@@ -1,0 +1,130 @@
+<div id="question-text"></div>
+<div class="multi-file-eval-container">
+  <!-- File Explorer Sidebar -->
+  <div class="file-explorer-sidebar" id="file-explorer">
+    <div class="file-explorer-header">
+      <h3>Project Files</h3>
+      <button id="new-file-btn" class="file-explorer-btn" title="Create New File">
+        <i class="fa fa-plus"></i>
+      </button>
+      <button id="initialize-project-btn" class="file-explorer-btn" title="Initialize Project">
+        <i class="fa fa-download"></i>
+      </button>
+    </div>
+    <div class="file-tree" id="file-tree">
+      <!-- File tree will be populated by JavaScript -->
+    </div>
+  </div>
+
+  <!-- Main Editor Area -->
+  <div class="main-editor-area">
+    <div class="editor-header">
+      <div class="used-prog-language">
+        <span>{{ self.language }}</span>
+      </div>
+      <div class="editor-tabs" id="editor-tabs">
+        <!-- Editor tabs will be populated by JavaScript -->
+      </div>
+    </div>
+    
+    <div class="editor-container">
+      <iframe id="monaco" frameborder="0" scrolling="no"></iframe>
+    </div>
+    
+    <div class="eval-ai-buttons">
+      <button id="reset-button" class="eval-ai-button">Reset</button>
+      <button id="run-tests-btn" class="eval-ai-button">Run Tests</button>
+      <button id="submit-button" class="eval-ai-button btn btn-primary">Submit Code</button>
+    </div>
+  </div>
+
+  <!-- Results Panel -->
+  <div class="result-panel">
+    <div class="tab">
+      <span class="tablinks result-tab-btn" data-id="output" id="defaultOpen">Output</span>
+      <span class="tablinks result-tab-btn" data-id="test-results">Test Results</span>
+      <span class="tablinks result-tab-btn" data-id="ai-feedback" id="ai-feedback-tab">AI Feedback</span>
+    </div>
+
+    <div id="output" class="tabcontent">
+      {% if self.language == "HTML/CSS" %}
+      <iframe class="html-render" scrolling="no" frameBorder="0"></iframe>
+      {% else %}
+      <div class="stdout"></div>
+      <div class="stderr"></div>
+      {% endif %}
+    </div>
+
+    <div id="test-results" class="tabcontent">
+      <div class="test-results-container">
+        <div class="test-summary">
+          <span class="test-count">Tests: <span id="test-count">0</span></span>
+          <span class="test-passed">Passed: <span id="test-passed">0</span></span>
+          <span class="test-failed">Failed: <span id="test-failed">0</span></span>
+        </div>
+        <div class="test-results-list" id="test-results-list">
+          <!-- Test results will be populated by JavaScript -->
+        </div>
+      </div>
+    </div>
+
+    <div id="ai-feedback" class="tabcontent"></div>
+  </div>
+</div>
+
+<!-- File Creation Modal -->
+<div id="file-modal" class="modal">
+  <div class="modal-content">
+    <div class="modal-header">
+      <h3>Create New File</h3>
+      <span class="close">&times;</span>
+    </div>
+    <div class="modal-body">
+      <div class="form-group">
+        <label for="new-filename">Filename:</label>
+        <input type="text" id="new-filename" placeholder="e.g., main.py, utils.js, etc.">
+      </div>
+      <div class="form-group">
+        <label for="file-type">File Type:</label>
+        <select id="file-type">
+          <option value="text">Text File</option>
+          <option value="python">Python</option>
+          <option value="javascript">JavaScript</option>
+          <option value="java">Java</option>
+          <option value="cpp">C++</option>
+          <option value="html">HTML</option>
+          <option value="css">CSS</option>
+          <option value="json">JSON</option>
+        </select>
+      </div>
+      <div class="form-group">
+        <label for="file-content">Initial Content (optional):</label>
+        <textarea id="file-content" rows="5" placeholder="Enter initial file content..."></textarea>
+      </div>
+    </div>
+    <div class="modal-footer">
+      <button id="create-file-btn" class="btn btn-primary">Create File</button>
+      <button id="cancel-file-btn" class="btn">Cancel</button>
+    </div>
+  </div>
+</div>
+
+<!-- Project Initialization Modal -->
+<div id="project-modal" class="modal">
+  <div class="modal-content">
+    <div class="modal-header">
+      <h3>Initialize Project</h3>
+      <span class="close">&times;</span>
+    </div>
+    <div class="modal-body">
+      <p>This will create starter files for your project. Any existing files will be replaced.</p>
+      <div class="template-preview" id="template-preview">
+        <!-- Template preview will be populated by JavaScript -->
+      </div>
+    </div>
+    <div class="modal-footer">
+      <button id="confirm-init-btn" class="btn btn-primary">Initialize Project</button>
+      <button id="cancel-init-btn" class="btn">Cancel</button>
+    </div>
+  </div>
+</div> 

@@ -1,0 +1,256 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <meta charset="UTF-8">
+    <title>Monaco Editor</title>
+    <style>
+        body {
+            margin: 0;
+            padding: 0;
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+        }
+        #container {
+            width: 100%;
+            height: 100vh;
+            display: flex;
+            flex-direction: column;
+        }
+        #editor-container {
+            flex: 1;
+            position: relative;
+        }
+        #monaco-editor {
+            width: 100%;
+            height: 100%;
+        }
+        .editor-statusbar {
+            height: 20px;
+            background-color: #007acc;
+            color: white;
+            display: flex;
+            align-items: center;
+            padding: 0 10px;
+            font-size: 12px;
+        }
+        .status-item {
+            margin-right: 15px;
+        }
+    </style>
+</head>
+<body>
+    <div id="container">
+        <div id="editor-container">
+            <div id="monaco-editor"></div>
+        </div>
+        <div class="editor-statusbar">
+            <span class="status-item" id="language-status">Language: {{ monaco_language }}</span>
+            <span class="status-item" id="file-status">File: main.py</span>
+            <span class="status-item" id="line-status">Line: 1, Column: 1</span>
+        </div>
+    </div>
+
+    <script src="https://unpkg.com/monaco-editor@0.45.0/min/vs/loader.js"></script>
+    <script>
+        require.config({ paths: { 'vs': 'https://unpkg.com/monaco-editor@0.45.0/min/vs' }});
+        
+        require(['vs/editor/editor.main'], function() {
+            // Multi-file editor configuration
+            const multiFileEditor = {
+                files: {},
+                currentFile: null,
+                editors: {},
+                language: '{{ monaco_language }}',
+                enableMultiFile: {{ enable_multi_file|lower }}
+            };
+
+            // Initialize Monaco Editor
+            const editor = monaco.editor.create(document.getElementById('monaco-editor'), {
+                value: '// Welcome to Multi-File Coding Assessment\n// Start by creating or opening a file',
+                language: '{{ monaco_language }}',
+                theme: 'vs-dark',
+                automaticLayout: true,
+                minimap: { enabled: true },
+                scrollBeyondLastLine: false,
+                fontSize: 14,
+                lineNumbers: 'on',
+                roundedSelection: false,
+                scrollbar: {
+                    vertical: 'auto',
+                    horizontal: 'auto'
+                },
+                folding: true,
+                wordWrap: 'on'
+            });
+
+            // Store editor reference
+            multiFileEditor.editors['main'] = editor;
+
+            // Update status bar
+            function updateStatusBar() {
+                const position = editor.getPosition();
+                document.getElementById('line-status').textContent = 
+                    `Line: ${position.lineNumber}, Column: ${position.column}`;
+            }
+
+            // Listen for cursor position changes
+            editor.onDidChangeCursorPosition(function(e) {
+                updateStatusBar();
+            });
+
+            // Listen for content changes
+            editor.onDidChangeModelContent(function(e) {
+                if (multiFileEditor.currentFile) {
+                    // Notify parent window of content change
+                    window.parent.postMessage({
+                        type: 'contentChanged',
+                        file: multiFileEditor.currentFile,
+                        content: editor.getValue()
+                    }, '*');
+                }
+            });
+
+            // Handle messages from parent window
+            window.addEventListener('message', function(event) {
+                const message = event.data;
+                
+                switch (message.type) {
+                    case 'loadFile':
+                        loadFile(message.filename, message.content, message.language);
+                        break;
+                    case 'saveFile':
+                        saveCurrentFile();
+                        break;
+                    case 'createFile':
+                        createNewFile(message.filename, message.content, message.language);
+                        break;
+                    case 'deleteFile':
+                        deleteFile(message.filename);
+                        break;
+                    case 'switchFile':
+                        switchToFile(message.filename);
+                        break;
+                    case 'updateProject':
+                        updateProjectStructure(message.files);
+                        break;
+                }
+            });
+
+            // File management functions
+            function loadFile(filename, content, language) {
+                // Create or update file in our collection
+                multiFileEditor.files[filename] = {
+                    content: content,
+                    language: language || multiFileEditor.language
+                };
+
+                // If this is the first file or we're switching to it
+                if (!multiFileEditor.currentFile || multiFileEditor.currentFile === filename) {
+                    switchToFile(filename);
+                }
+            }
+
+            function switchToFile(filename) {
+                if (!multiFileEditor.files[filename]) {
+                    console.error('File not found:', filename);
+                    return;
+                }
+
+                const fileData = multiFileEditor.files[filename];
+                multiFileEditor.currentFile = filename;
+
+                // Update editor content and language
+                editor.setValue(fileData.content);
+                monaco.editor.setModelLanguage(editor.getModel(), fileData.language);
+
+                // Update status bar
+                document.getElementById('file-status').textContent = `File: ${filename}`;
+                document.getElementById('language-status').textContent = `Language: ${fileData.language}`;
+
+                // Notify parent of file switch
+                window.parent.postMessage({
+                    type: 'fileSwitched',
+                    filename: filename
+                }, '*');
+            }
+
+            function saveCurrentFile() {
+                if (multiFileEditor.currentFile) {
+                    const content = editor.getValue();
+                    multiFileEditor.files[multiFileEditor.currentFile].content = content;
+
+                    // Notify parent of save
+                    window.parent.postMessage({
+                        type: 'fileSaved',
+                        filename: multiFileEditor.currentFile,
+                        content: content
+                    }, '*');
+                }
+            }
+
+            function createNewFile(filename, content, language) {
+                multiFileEditor.files[filename] = {
+                    content: content || '',
+                    language: language || multiFileEditor.language
+                };
+
+                // Switch to the new file
+                switchToFile(filename);
+            }
+
+            function deleteFile(filename) {
+                if (multiFileEditor.files[filename]) {
+                    delete multiFileEditor.files[filename];
+
+                    // If we're deleting the current file, switch to another
+                    if (multiFileEditor.currentFile === filename) {
+                        const remainingFiles = Object.keys(multiFileEditor.files);
+                        if (remainingFiles.length > 0) {
+                            switchToFile(remainingFiles[0]);
+                        } else {
+                            // No files left, show empty editor
+                            editor.setValue('// No files in project\n// Create a new file to get started');
+                            multiFileEditor.currentFile = null;
+                            document.getElementById('file-status').textContent = 'File: No file selected';
+                        }
+                    }
+                }
+            }
+
+            function updateProjectStructure(files) {
+                multiFileEditor.files = files;
+                
+                // If no current file, switch to the first available
+                if (!multiFileEditor.currentFile && Object.keys(files).length > 0) {
+                    switchToFile(Object.keys(files)[0]);
+                }
+            }
+
+            // Auto-save functionality
+            let autoSaveTimer = null;
+            editor.onDidChangeModelContent(function() {
+                if (autoSaveTimer) {
+                    clearTimeout(autoSaveTimer);
+                }
+                autoSaveTimer = setTimeout(function() {
+                    saveCurrentFile();
+                }, 2000); // Auto-save after 2 seconds of inactivity
+            });
+
+            // Keyboard shortcuts
+            editor.addCommand(monaco.KeyMod.CtrlCmd | monaco.KeyCode.KeyS, function() {
+                saveCurrentFile();
+            });
+
+            // Notify parent that editor is ready
+            window.parent.postMessage({
+                type: 'editorReady',
+                language: multiFileEditor.language
+            }, '*');
+
+            // Expose editor functions globally for debugging
+            window.multiFileEditor = multiFileEditor;
+            window.monacoEditor = editor;
+        });
+    </script>
+</body>
+</html> 
