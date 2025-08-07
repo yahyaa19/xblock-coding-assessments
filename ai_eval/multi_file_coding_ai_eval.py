@@ -408,7 +408,7 @@ class MultiFileCodingAIEvalXBlock(CodingAIEvalXBlock):
     def _get_timestamp(self):
         """Get current timestamp."""
         from datetime import datetime
-        return datetime.utcnow().isoformat()
+        return datetime.now().isoformat()
 
     def _update_project_structure(self):
         """Update project structure metadata."""
