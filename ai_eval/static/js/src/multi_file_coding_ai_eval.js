@@ -1,4 +1,4 @@
-/* JavaScript for MultiFileCodingAIEvalXBlock */
+/* Enhanced JavaScript for MultiFileCodingAIEvalXBlock */
 
 function MultiFileCodingAIEvalXBlock(runtime, element, data) {
   // Handler URLs
@@ -33,6 +33,12 @@ function MultiFileCodingAIEvalXBlock(runtime, element, data) {
   const stdout = $(".stdout", element);
   const stderr = $(".stderr", element);
   const htmlRenderIframe = $(".html-render", element);
+
+  // Test result elements
+  const testResultsContainer = $("#test-results-list", element);
+  const testCountElement = $("#test-count", element);
+  const testPassedElement = $("#test-passed", element);
+  const testFailedElement = $("#test-failed", element);
 
   // State management
   let currentProject = {

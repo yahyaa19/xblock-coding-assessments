@@ -375,21 +375,54 @@ class MultiFileCodingAIEvalXBlock(CodingAIEvalXBlock):
 
     @XBlock.json_handler
     def run_test_cases(self, data, suffix=""):
-        """Run test cases against the project."""
+        """Enhanced test case runner with better error handling and reporting."""
         try:
             if not self.test_cases:
-                return {"success": True, "message": "No test cases defined"}
+                return {
+                    "success": True, 
+                    "message": "No test cases defined",
+                    "results": []
+                }
             
             results = []
-            for test_case in self.test_cases:
-                result = self._execute_test_case(test_case)
-                results.append(result)
+            total_tests = len(self.test_cases)
             
-            return {"success": True, "results": results}
+            for i, test_case in enumerate(self.test_cases):
+                try:
+                    # Enhanced test case execution with timeout
+                    result = self._execute_test_case_enhanced(test_case, i + 1)
+                    results.append(result)
+                    
+                except Exception as e:
+                    logger.error(f"Error executing test case {i + 1}: {e}")
+                    results.append({
+                        "test_case": test_case,
+                        "test_number": i + 1,
+                        "test_name": test_case.get("name", f"Test {i + 1}"),
+                        "passed": False,
+                        "error": str(e),
+                        "execution_time": 0,
+                        "memory_used": 0
+                    })
+            
+            # Calculate summary statistics
+            passed_count = sum(1 for r in results if r.get("passed", False))
+            failed_count = total_tests - passed_count
+            
+            return {
+                "success": True,
+                "results": results,
+                "summary": {
+                    "total": total_tests,
+                    "passed": passed_count,
+                    "failed": failed_count,
+                    "pass_rate": (passed_count / total_tests * 100) if total_tests > 0 else 0
+                }
+            }
             
         except Exception as e:
             logger.error(f"Error running test cases: {e}")
-            raise JsonHandlerError(500, "Failed to run test cases")
+            raise JsonHandlerError(500, f"Failed to run test cases: {str(e)}")
 
     # Helper methods
 
@@ -447,6 +480,180 @@ class MultiFileCodingAIEvalXBlock(CodingAIEvalXBlock):
         }
         return main_files.get(self.language, "main.py")
 
+    def _execute_test_case_enhanced(self, test_case, test_number):
+        """Enhanced test case execution with better error handling."""
+        try:
+            # Get test case parameters
+            test_name = test_case.get("name", f"Test {test_number}")
+            test_description = test_case.get("description", "")
+            input_data = test_case.get("input", "")
+            expected_output = test_case.get("expected_output", "")
+            timeout = test_case.get("timeout", 10)
+            test_type = test_case.get("type", "output_comparison")
+            
+            # Get the main file content
+            main_file_content = self._get_main_file_content()
+            
+            if not main_file_content:
+                return {
+                    "test_case": test_case,
+                    "test_number": test_number,
+                    "test_name": test_name,
+                    "passed": False,
+                    "error": "No main file content found",
+                    "execution_time": 0,
+                    "memory_used": 0
+                }
+            
+            # Prepare code with test input
+            test_code = main_file_content
+            if input_data:
+                if self.language == LanguageLabels.Python:
+                    test_code += f"\n\n# Test input\n{input_data}"
+                elif self.language == LanguageLabels.Java:
+                    # For Java, we might need to modify the main method
+                    pass  # Handle Java-specific input injection
+                # Add other language-specific input handling
+            
+            # Submit code for execution
+            submission_id = submit_code(
+                self.judge0_api_key,
+                test_code,
+                self.language
+            )
+            
+            # Wait and get result with timeout
+            import time
+            start_time = time.time()
+            result = self._get_submission_result_with_timeout(
+                submission_id, 
+                timeout_seconds=timeout
+            )
+            execution_time = time.time() - start_time
+            
+            if not result:
+                return {
+                    "test_case": test_case,
+                    "test_number": test_number,
+                    "test_name": test_name,
+                    "passed": False,
+                    "error": "Test execution timeout",
+                    "execution_time": execution_time,
+                    "memory_used": 0
+                }
+            
+            # Extract execution results
+            stdout = result.get("stdout", "").strip()
+            stderr = result.get("stderr", "").strip()
+            compile_output = result.get("compile_output", "").strip()
+            exit_code = result.get("status", {}).get("id", 0)
+            
+            # Check for compilation errors
+            if compile_output and exit_code != 3:  # 3 = Accepted
+                return {
+                    "test_case": test_case,
+                    "test_number": test_number,
+                    "test_name": test_name,
+                    "passed": False,
+                    "error": f"Compilation error: {compile_output}",
+                    "actual_output": "",
+                    "expected_output": expected_output,
+                    "execution_time": execution_time,
+                    "memory_used": result.get("memory", 0)
+                }
+            
+            # Check for runtime errors
+            if stderr and exit_code != 3:
+                return {
+                    "test_case": test_case,
+                    "test_number": test_number,
+                    "test_name": test_name,
+                    "passed": False,
+                    "error": f"Runtime error: {stderr}",
+                    "actual_output": stdout,
+                    "expected_output": expected_output,
+                    "execution_time": execution_time,
+                    "memory_used": result.get("memory", 0)
+                }
+            
+            # Perform test comparison based on test type
+            passed = self._compare_test_output(
+                stdout, expected_output, test_type
+            )
+            
+            return {
+                "test_case": test_case,
+                "test_number": test_number,
+                "test_name": test_name,
+                "description": test_description,
+                "passed": passed,
+                "actual_output": stdout,
+                "expected_output": expected_output,
+                "execution_time": execution_time,
+                "memory_used": result.get("memory", 0),
+                "exit_code": exit_code
+            }
+            
+        except Exception as e:
+            logger.error(f"Error in test case execution: {e}")
+            return {
+                "test_case": test_case,
+                "test_number": test_number,
+                "test_name": test_name,
+                "passed": False,
+                "error": str(e),
+                "execution_time": 0,
+                "memory_used": 0
+            }
+
+    def _get_submission_result_with_timeout(self, submission_id, timeout_seconds=10):
+        """Get submission result with proper timeout handling."""
+        import time
+        
+        max_attempts = timeout_seconds
+        attempt = 0
+        
+        while attempt < max_attempts:
+            try:
+                result = get_submission_result(self.judge0_api_key, submission_id)
+                status_id = result.get("status", {}).get("id", 0)
+                
+                # Check if execution is complete
+                if status_id not in [1, 2]:  # Not "In Queue" or "Processing"
+                    return result
+                
+                time.sleep(1)
+                attempt += 1
+                
+            except Exception as e:
+                logger.error(f"Error getting submission result: {e}")
+                break
+        
+        return None
+
+    def _compare_test_output(self, actual, expected, test_type="output_comparison"):
+        """Compare test output using different comparison methods."""
+        if test_type == "exact_match":
+            return actual == expected
+        
+        elif test_type == "output_comparison":
+            # Default: trim whitespace and compare
+            return actual.strip() == expected.strip()
+        
+        elif test_type == "contains":
+            return expected in actual
+        
+        elif test_type == "regex":
+            import re
+            try:
+                return bool(re.search(expected, actual))
+            except re.error:
+                return False
+        
+        else:
+            # Default to output comparison
+            return actual.strip() == expected.strip()
+    
     def _execute_test_case(self, test_case):
         """Execute a single test case."""
         try:
